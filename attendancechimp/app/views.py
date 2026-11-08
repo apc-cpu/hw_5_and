@@ -100,3 +100,91 @@ def createUser(request):
         login(request, user)
     return HttpResponse("User created successfully", status=200)
 
+# ---------------------------------------------------------------------------
+# HW5
+# ---------------------------------------------------------------------------
+
+def new_course(request):
+    return render(request, 'app/new_course.html')
+
+
+def new_lecture(request):
+    return render(request, 'app/new_lecture.html')
+
+
+def new_qr_upload(request):
+    return render(request, 'app/new_qr_upload.html')
+
+
+@csrf_exempt
+def createCourse(request):
+    if request.method != "POST":
+        return HttpResponse(status=405)
+
+    if not request.user.is_authenticated or not is_instructor(request.user):
+        return HttpResponse(status=401)
+
+    Course.objects.create(
+        name=request.POST.get('course-name'),
+        instructor=request.user,
+        start_time=request.POST.get('start-time'),
+        end_time=request.POST.get('end-time'),
+        day_mon=('day-mon' in request.POST),
+        day_tue=('day-tue' in request.POST),
+        day_wed=('day-wed' in request.POST),
+        day_thu=('day-thu' in request.POST),
+        day_fri=('day-fri' in request.POST),
+    )
+
+    return HttpResponse(status=200)
+
+
+@csrf_exempt
+def createLecture(request):
+    if request.method != "POST":
+        return HttpResponse(status=405)
+
+    if not request.user.is_authenticated or not is_instructor(request.user):
+        return HttpResponse(status=401)
+
+    course_name = request.POST.get('choice')
+
+    course = Course.objects.get(name=course_name)
+
+    Lecture.objects.create(course=course)
+
+    return HttpResponse(status=200)
+
+
+@csrf_exempt
+def createQRCodeUpload(request):
+    if request.method != "POST":
+        return HttpResponse(status=405)
+
+    if not request.user.is_authenticated or not is_student(request.user):
+        return HttpResponse(status=401)
+
+    image_file = request.FILES.get('imageUpload')
+
+    QRCodeUpload.objects.create(
+        student=request.user,
+        image=image_file
+    )
+
+    return HttpResponse(status=200)
+
+
+def dumpUploads(request):
+    if not request.user.is_authenticated or not is_instructor(request.user):
+        return HttpResponse(status=401)
+
+    data = []
+
+    for upload in QRCodeUpload.objects.all():
+        data.append({
+            "username": upload.student.username,
+            "upload_time": str(upload.uploaded_at)
+        })
+
+    return JsonResponse(data, safe=False)
+
